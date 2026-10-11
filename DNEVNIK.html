@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ежедневник</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        :root {
+            --bg-main: #0f1115;
+            --bg-secondary: #1a1d23;
+            --bg-tertiary: #242830;
+            --border: #333842;
+            --text-primary: #e6e9ef;
+            --text-secondary: #9ca3af;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --accent-orange: #f59e0b;
+            --accent-rose: #ec4899;
+            --hover: #2d323b;
+        }
+        body { background: var(--bg-main); min-height: 100vh; color: var(--text-primary); display: flex; }
+
+        /* Боковая панель */
+        .sidebar {
+            width: 60px; background: var(--bg-secondary); display: flex; flex-direction: column;
+            align-items: center; padding: 16px 0; border-right: 1px solid var(--border); flex-shrink: 0; overflow-y: auto;
+        }
+        .sidebar-icon {
+            width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            font-size: 20px; cursor: pointer; transition: 0.25s; margin-bottom: 12px; position: relative;
+        }
+        .sidebar-icon:hover, .sidebar-icon.active { transform: scale(1.08); box-shadow: 0 0 12px rgba(139,92,246,0.4); }
+        .profile-icon { background: linear-gradient(135deg, var(--accent-purple), #6366f1); }
+        .food-icon { background: linear-gradient(135deg, var(--accent-orange), #ea580c); }
+        .sport-icon { background: linear-gradient(135deg, var(--accent-green), #059669); }
+        .custom-tab-icon { background: linear-gradient(135deg, var(--accent-blue), #1d4ed8); font-size: 16px; }
+        .add-custom-tab { background: rgba(255,255,255,0.1); border: 1px dashed var(--text-secondary); }
+        .sidebar-divider { width: 28px; height: 1px; background: var(--border); margin: 8px 0 12px; }
+        .custom-tab-remove {
+            position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; background: var(--accent-red);
+            border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.2s;
+        }
+        .sidebar-icon:hover .custom-tab-remove { opacity: 1; }
+
+        /* Основная область */
+        .main-area { flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+        .content-area { flex: 1; padding: 28px; overflow-y: auto; }
+        @keyframes fadeIn { from {opacity:0; transform: translateY(6px);} to {opacity:1; transform: translateY(0);} }
+
+        /* Элементы формы */
+        .tabs-sport { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        .sport-tab {
+            padding: 10px 18px; border-radius: 10px 10px 0 0; cursor: pointer;
+            background: transparent; border: none; color: var(--text-secondary); transition: 0.2s;
+        }
+        .sport-tab:hover { background: var(--bg-tertiary); }
+        .sport-tab.active { color: var(--text-primary); border-bottom: 2px solid var(--accent-green); font-weight: 600; }
+
+        .input-group, .input-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+        input, select, button, textarea {
+            padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); font-size: 14px;
+            background: var(--bg-tertiary); color: var(--text-primary); transition: 0.2s;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--accent-green); box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
+        .btn-primary { background: var(--accent-blue); color: white; border: none; cursor: pointer; }
+        .btn-green { background: var(--accent-green); color: white; border: none; cursor: pointer; }
+        .btn-green:hover { background: #059669; }
+        .btn-orange { background: var(--accent-orange); color: white; border: none; cursor: pointer; }
+        .btn-rose { background: var(--accent-rose); color: white; border: none; cursor: pointer; }
+        .btn-small { padding: 6px 12px; font-size: 12px; }
+        .btn-delete { background: var(--accent-red); color: white; border: none; }
+        .cancel-btn { background: var(--bg-tertiary); color: var(--text-primary); }
+
+        /* Карточки */
+        .card {
+            padding: 18px; background: var(--bg-secondary); border-radius: 12px; margin-bottom: 14px;
+            border-left: 4px solid; transition: 0.25s;
+        }
+        .card:hover { background: var(--bg-tertiary); transform: translateX(3px); }
+        .card-food { border-left-color: var(--accent-orange); }
+        .card-custom { border-left-color: var(--accent-blue); }
+        .card-progress { border-left-color: var(--accent-purple); }
+        .card-sport { border-left-color: var(--accent-green); }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .card-title { font-weight: 600; font-size: 16px; }
+        .card-meta { font-size: 12px; color: var(--text-secondary); }
+        .card-photo { max-width: 140px; border-radius: 8px; margin: 10px 0; cursor: pointer; }
+        .card-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .calories-badge {
+            display: inline-block; padding: 4px 12px; border-radius: 12px;
+            background: rgba(245,158,11,0.2); color: #fcd34d; font-size: 14px; margin-left: 8px;
+        }
+        .calories-container {
+            background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(234,88,12,0.1));
+            padding: 20px; border-radius: 14px; margin-bottom: 24px;
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+        }
+        .calories-value { font-size: 32px; font-weight: bold; color: var(--accent-orange); }
+
+        /* Упражнения — крестик справа */
+        .exercise-item {
+            padding: 12px; background: var(--bg-tertiary); border-radius: 8px; margin-bottom: 8px;
+            display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+        }
+        .exercise-name { flex: 2; min-width: 140px; font-weight: 500; }
+        .exercise-fields { flex: 3; display: flex; gap: 6px; min-width: 200px; }
+        .exercise-fields input { width: 90px; padding: 8px 10px; text-align: center; }
+        .exercise-actions { margin-left: auto; flex-shrink: 0; }
+
+        /* Тренировка */
+        .workout-set {
+            display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; margin-bottom: 6px;
+            background: var(--bg-tertiary); transition: 0.2s; flex-wrap: wrap;
+        }
+        .workout-set.completed { opacity: 0.6; background: rgba(16,185,129,0.1); }
+        .set-checkbox { width: 22px; height: 22px; cursor: pointer; accent-color: var(--accent-green); }
+        .set-input { flex: 1; max-width: 110px; padding: 8px 10px; text-align: center; }
+        .set-num { color: var(--text-secondary); font-size: 12px; width: 24px; display: flex; align-items: center; justify-content: center; }
+        .completed { opacity: 0.55; text-decoration: line-through; }
+
+        /* Прогресс */
+        .progress-bar-container {
+            width: 100%; height: 24px; background: var(--bg-tertiary); border-radius: 12px; overflow: hidden; margin: 10px 0;
+        }
+        .progress-bar {
+            height: 100%; border-radius: 12px; transition: width 0.4s ease; display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 600; color: white;
+        }
+        .progress-text { display: flex; justify-content: space-between; font-size: 13px; margin-top: 4px; flex-wrap: wrap; }
+
+        /* Поиск */
+        .search-result {
+            padding: 10px 14px; background: var(--bg-tertiary); border-radius: 8px; margin-top: 6px; cursor: pointer; transition: 0.2s;
+        }
+        .search-result:hover { background: var(--hover); }
+        .loading { color: var(--text-secondary); padding: 10px; }
+
+        /* Модалки */
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center;
+            z-index: 100; display: none;
+        }
+        .modal-content { background: var(--bg-secondary); padding: 24px; border-radius: 14px; width: 90%; max-width: 520px; border: 1px solid var(--border); max-height: 90vh; overflow-y: auto; }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; flex-wrap: wrap; }
+
+        .section-title { font-size: 18px; margin-bottom: 14px; color: var(--text-primary); }
+        .diff-up { color: var(--accent-red); }
+        .diff-down { color: var(--accent-green); }
+
+        @media (max-width: 600px) {
+            .content-area { padding: 16px; }
+            .sidebar { width: 52px; }
+            .sidebar-icon { width: 38px; height: 38px; font-size: 18px; }
+            .exercise-fields { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-area"><div class="content-area" id="pagesContainer"></div></main>
+
+    <div class="modal" id="tabModal">
+        <div class="modal-content">
+            <h3>Создать вкладку</h3>
+            <input type="text" id="tabNameInput" placeholder="Название вкладки..." style="width:100%;margin:18px 0;">
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeTabModal()">Отмена</button>
+                <button class="btn-primary" onclick="confirmTabName()">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="progressModal">
+        <div class="modal-content">
+            <h3 id="progressModalTitle">Новая шкала прогресса</h3>
+            <input type="text" id="progressName" placeholder="Название цели..." style="width:100%;margin:12px 0;">
+            <input type="number" id="progressGoal" placeholder="Цель (число)" style="width:100%;margin-bottom:12px;">
+            <input type="number" id="progressCurrent" placeholder="Текущее значение" style="width:100%;margin-bottom:12px;">
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeProgressModal()">Отмена</button>
+                <button class="btn-primary" onclick="saveProgress()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="templateModal">
+        <div class="modal-content">
+            <h3>Создать шаблон тренировки</h3>
+            <input type="text" id="templateName" placeholder="Название тренировки" style="width:100%;margin:12px 0;">
+            <div id="exercisesList"></div>
+            <button class="btn-small btn-primary" style="margin:10px 0 20px" onclick="addExerciseRow()">+ Добавить упражнение</button>
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeTemplateModal()">Отмена</button>
+                <button class="btn-green" onclick="saveTemplate()">Сохранить шаблон</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="workoutModal">
+        <div class="modal-content">
+            <h3 id="workoutTitle">Тренировка</h3>
+            <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Заполни веса и отмечай подходы ✅</p>
+            <div id="activeWorkoutContent"></div>
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeWorkoutModal()">Закрыть</button>
+                <button class="btn-green" onclick="finishWorkout()">✅ Завершить тренировку</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+let history = [], foodRecords = [], workoutTemplates = [], workoutLogs = [], weightHistory = [], customTabs = [];
+let currentSection = 'food', sportSubtab = 'templates', activeWorkout = null;
+let editingProgressTabId = null, editingProgressId = null;
+const COLORS = ['#3b82f6','#10b981','#f59e0b','#ec4899','#8b5cf6','#06b6d4','#ef4444','#84cc16'];
+const STORAGE_KEY = 'dailybook_data';
+
+function getTodayKey() { return new Date().toLocaleDateString('ru-RU'); }
+function saveToStorage() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        history, foodRecords, workoutTemplates, workoutLogs, weightHistory, customTabs
+    }));
+}
+function loadFromStorage() {
+    try {
+        const d = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        history = d.history || [];
+        foodRecords = d.foodRecords || [];
+        workoutTemplates = d.workoutTemplates || [];
+        workoutLogs = d.workoutLogs || [];
+        weightHistory = d.weightHistory || [];
+        customTabs = d.customTabs || [];
+    } catch(e) { console.log('Нет данных'); }
+}
+function saveAndRender() { saveToStorage(); renderAll(); }
+function addHistory(type, text) { history.unshift({ type, text, time: new Date().toLocaleString('ru-RU') }); saveToStorage(); }
+
+document.addEventListener('DOMContentLoaded', () => { loadFromStorage(); renderAll(); });
+
+// === Боковая панель ===
+function renderSidebar() {
+    const sb = document.getElementById('sidebar');
+    sb.innerHTML = `
+        <div class="sidebar-icon food-icon ${currentSection==='food'?'active':''}" onclick="openSection('food')">🍽️</div>
+        <div class="sidebar-icon sport-icon ${currentSection==='sport'?'active':''}" onclick="openSection('sport')">💪</div>
+        <div class="sidebar-divider"></div>
+    `;
+    customTabs.forEach(t => {
+        sb.innerHTML += `
+            <div class="sidebar-icon custom-tab-icon ${currentSection==='custom-'+t.id?'active':''}" onclick="openSection('custom-${t.id}')" title="${t.name}">
+                ${t.name[0].toUpperCase()}
+                <span class="custom-tab-remove" onclick="event.stopPropagation(); removeCustomTab(${t.id})">×</span>
+            </div>`;
+    });
+    sb.innerHTML += `
+        <div class="sidebar-icon add-custom-tab" onclick="openTabModal()" title="Новая вкладка">+</div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-icon profile-icon ${currentSection==='profile'?'active':''}" onclick="openSection('profile')">👤</div>
+    `;
+}
+function openSection(s) { currentSection = s; if(!s.startsWith('sport')) sportSubtab='templates'; renderAll(); }
+
+// === Вкладки ===
+function openTabModal() { document.getElementById('tabNameInput').value=''; document.getElementById('tabModal').style.display='flex'; }
+function closeTabModal() { document.getElementById('tabModal').style.display='none'; }
+function confirmTabName() {
+    const n = document.getElementById('tabNameInput').value.trim() || 'Моя вкладка';
+    customTabs.push({id:Date.now(), name:n, entries:[], progresses:[]});
+    addHistory('tab', `Создана вкладка «${n}»`); closeTabModal(); saveAndRender();
+}
+function removeCustomTab(id) {
+    if(!confirm('Удалить вкладку со всеми данными?')) return;
+    customTabs = customTabs.filter(t=>t.id!==id);
+    if(currentSection==='custom-'+id) currentSection='food';
+    saveAndRender();
+}
+
+// === Прогресс ===
+function openAddProgressModal(tid, pid=null) {
+    editingProgressTabId=tid; editingProgressId=pid;
+    const t = customTabs.find(x=>x.id===tid);
+    if(pid) {
+        const p = t.progresses.find(x=>x.id===pid);
+        document.getElementById('progressName').value=p.name;
+        document.getElementById('progressGoal').value=p.goal;
+        document.getElementById('progressCurrent').value=p.current;
+    } else {
+        document.getElementById('progressName').value='';
+        document.getElementById('progressGoal').value='';
+        document.getElementById('progressCurrent').value=0;
+    }
+    document.getElementById('progressModal').style.display='flex';
+}
+function closeProgressModal() { document.getElementById('progressModal').style.display='none'; }
+function saveProgress() {
+    const n = document.getElementById('progressName').value.trim();
+    const g = parseFloat(document.getElementById('progressGoal').value);
+    const c = parseFloat(document.getElementById('progressCurrent').value)||0;
+    if(!n||!g||g<=0) return alert('Заполните корректно');
+    const tab = customTabs.find(x=>x.id===editingProgressTabId);
+    if(editingProgressId) {
+        const p = tab.progresses.find(x=>x.id===editingProgressId);
+        Object.assign(p,{name:n,goal:g,current:c});
+    } else {
+        tab.progresses.push({id:Date.now(),name:n,goal:g,current:c,color:COLORS[tab.progresses.length%COLORS.length]});
+    }
+    closeProgressModal(); saveAndRender();
+}
+function updateProgressValue(tid,pid,d) {
+    const t = customTabs.find(x=>x.id===tid);
+    const p = t.progresses.find(x=>x.id===pid);
+    p.current = Math.max(0,Math.min(p.goal,p.current+d)); saveAndRender();
+}
+function deleteProgress(tid,pid) { if(!confirm('Удалить шкалу?')) return; const t=customTabs.find(x=>x.id===tid); t.progresses=t.progresses.filter(x=>x.id!==pid); saveAndRender(); }
+function renderProgressBar(p) {
+    const pc = Math.min(100,Math.round((p.current/p.goal)*100)), done=pc>=100;
+    return `<div class="card card-progress">
+        <div class="card-header"><span class="card-title">${p.name} ${done?'✅':''}</span><span class="card-meta">${p.current} / ${p.goal}</span></div>
+        <div class="progress-bar-container"><div class="progress-bar" style="width:${pc}%;background:${p.color}">${pc>15?pc+'%':''}</div></div>
+        <div class="progress-text"><span class="progress-percent">${pc}%</span><span>${done?'Цель достигнута!':'Осталось: '+(p.goal-p.current).toFixed(1)}</span></div>
+        <div class="card-actions">
+            <button class="btn-small btn-primary" onclick="updateProgressValue(${editingProgressTabId},${p.id},1)">+1</button>
+            <button class="btn-small cancel-btn" onclick="updateProgressValue(${editingProgressTabId},${p.id},-1)">-1</button>
+            <button class="btn-small btn-green" onclick="openAddProgressModal(${editingProgressTabId},${p.id})">✏️</button>
+            <button class="btn-small btn-delete" onclick="deleteProgress(${editingProgressTabId},${p.id})">×</button>
+        </div>
+    </div>`;
+}
+
+// === Еда ===
+let searchTimeout;
+async function searchProduct() {
+    clearTimeout(searchTimeout);
+    const q = document.getElementById('foodDish').value.trim();
+    if(!q||q.length<2) { document.getElementById('searchResults').innerHTML=''; return; }
+    searchTimeout = setTimeout(async ()=>{
+        const c=document.getElementById('searchResults'); c.innerHTML='<div class="loading">Поиск…</div>';
+        try {
+            const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=5`);
+            const d = await res.json();
+            if(!d.products?.length) { c.innerHTML='<div class="loading">Не найдено. Введите вручную</div>'; return; }
+            c.innerHTML = d.products.map(p=>{
+                const k=p.nutriments?.['energy-kcal_100g']||0;
+                const n=(p.product_name||q).replace(/'/g,"\\'");
+                return `<div class="search-result" onclick="selectProduct(${k},'${n}')"><strong>${p.product_name||'Продукт'}</strong> — ${k} ккал/100г</div>`;
+            }).join('');
+        } catch { c.innerHTML='<div class="loading">Нет связи. Введите вручную</div>'; }
+    },500);
+}
+function selectProduct(k,n) {
+    document.getElementById('foodDish').value=n;
+    document.getElementById('foodCaloriesPer100').value=k;
+    document.getElementById('searchResults').innerHTML='';
+    calculateCaloriesFromWeight();
+}
+function calculateCaloriesFromWeight() {
+    const k=parseFloat(document.getElementById('foodCaloriesPer100').value)||0;
+    const w=parseFloat(document.getElementById('foodWeight').value)||0;
+    document.getElementById('foodCalories').value=Math.round(k*w/100);
+}
+function addFoodRecord() {
+    const d=document.getElementById('foodDish').value.trim();
+    const c=parseInt(document.getElementById('foodCalories').value)||0;
+    const w=parseFloat(document.getElementById('foodWeight').value)||null;
+    const kp=parseFloat(document.getElementById('foodCaloriesPer100').value)||null;
+    if(!d) return alert('Введите название');
+    const f=document.getElementById('foodPhoto').files[0];
+    if(f){const r=new FileReader();r.onload=e=>saveFood(d,c,w,kp,e.target.result);r.readAsDataURL(f);}
+    else saveFood(d,c,w,kp,null);
+}
+function saveFood(dish,cal,w,kp,photo) {
+    foodRecords.push({id:Date.now(),dish,calories:cal,weight:w,kcalPer100:kp,photo,date:new Date().toLocaleString('ru-RU'),dayKey:getTodayKey()});
+    addHistory('food',`Добавлено: «${dish}» — ${cal} ккал`);
+    document.getElementById('foodDish').value='';document.getElementById('foodCaloriesPer100').value='';
+    document.getElementById('foodWeight').value='';document.getElementById('foodCalories').value='';
+    document.getElementById('searchResults').innerHTML=''; saveAndRender();
+}
+function deleteFoodRecord(id) { foodRecords=foodRecords.filter(x=>x.id!==id); saveAndRender(); }
+function getTodayCalories() { return foodRecords.filter(r=>r.dayKey===getTodayKey()).reduce((s,r)=>s+r.calories,0); }
+
+// === Записи пользовательских вкладок ===
+function addCustomEntry(tid) {
+    const t=document.getElementById(`customText-${tid}`).value.trim();
+    const rem=document.getElementById(`customReminder-${tid}`).checked;
+    if(!t) return alert('Введите текст');
+    const tab=customTabs.find(x=>x.id===tid);
+    const f=document.getElementById(`customPhoto-${tid}`).files[0];
+    if(f){const r=new FileReader();r.onload=e=>saveCustom(tab,t,rem,e.target.result);r.readAsDataURL(f);}
+    else saveCustom(tab,t,rem,null);
+}
+function saveCustom(tab,txt,rem,photo) {
+    tab.entries.unshift({id:Date.now(),text:txt,isReminder:rem,completed:false,photo,createdAt:new Date().toLocaleString('ru-RU')});
+    addHistory('custom',`В «${tab.name}» добавлена запись`); saveAndRender();
+}
+function toggleCustomEntry(tid,id) {
+    const t=customTabs.find(x=>x.id===tid);
+    const e=t.entries.find(x=>x.id===id); e.completed=!e.completed; saveAndRender();
+}
+function deleteCustomEntry(tid,id) {
+    const t=customTabs.find(x=>x.id===tid); t.entries=t.entries.filter(x=>x.id!==id); saveAndRender();
+}
+
+// === СПОРТ ===
+function openSportSubtab(t) { sportSubtab=t; renderAll(); }
+function openTemplateModal() { document.getElementById('templateName').value=''; document.getElementById('exercisesList').innerHTML=''; addExerciseRow(); document.getElementById('templateModal').style.display='flex'; }
+function closeTemplateModal() { document.getElementById('templateModal').style.display='none'; }
+function addExerciseRow() {
+    const list=document.getElementById('exercisesList');
+    const row=document.createElement('div');row.className='exercise-item';
+    row.innerHTML=`<input type="text" class="exercise-name" placeholder="Упражнение">
+        <div class="exercise-fields">
+            <input type="number" class="exercise-sets" placeholder="Подх." value="3" min="1">
+            <input type="number" class="exercise-reps" placeholder="Повт." value="10" min="1">
+            <input type="number" class="exercise-weight" placeholder="Вес">
+        </div>
+        <div class="exercise-actions"><button class="btn-small btn-delete" onclick="this.closest('.exercise-item').remove()">×</button></div>`;
+    list.appendChild(row);
+}
+function saveTemplate() {
+    const n=document.getElementById('templateName').value.trim(); if(!n)return alert('Введите название');
+    const rows=document.querySelectorAll('#exercisesList .exercise-item'); if(!rows.length)return alert('Добавьте упражнения');
+    const exs=[]; rows.forEach(r=>{
+        const name=r.querySelector('.exercise-name').value.trim();
+        const s=parseInt(r.querySelector('.exercise-sets').value)||1;
+        const rep=parseInt(r.querySelector('.exercise-reps').value)||1;
+        const w=parseFloat(r.querySelector('.exercise-weight').value)||0;
+        if(name) exs.push({name,sets:s,reps:rep,weight:w});
+    });
+    if(!exs.length)return alert('Заполните упражнения');
+    workoutTemplates.push({id:Date.now(),name:n,exercises:exs,createdAt:new Date().toLocaleString('ru-RU')});
+    addHistory('sport',`Создан шаблон: «${n}»`); closeTemplateModal(); saveAndRender();
+}
+function startWorkout(tid) {
+    const t=workoutTemplates.find(x=>x.id===tid);
+    activeWorkout={
+        templateId:t.id,templateName:t.name,startedAt:new Date().toLocaleString('ru-RU'),
+        exercises:t.exercises.map(ex=>({name:ex.name,targetReps:ex.reps,sets:Array.from({length:ex.sets},()=>({weight:ex.weight,reps:ex.reps,completed:false}))}))
+    };
+    const prev=workoutLogs.find(l=>l.templateId===activeWorkout.templateId);
+    if(prev) activeWorkout.exercises.forEach(ex=>{
+        const pex=prev.exercises.find(e=>e.name===ex.name);
+        if(pex?.sets.length){const lw=pex.sets[pex.sets.length-1].weight; ex.sets.forEach(s=>{if(!s.weight&&lw)s.weight=lw;});}
+    });
+    document.getElementById('workoutTitle').textContent=`🏋️ ${t.name}`;
+    renderActiveWorkoutContent();
+    document.getElementById('workoutModal').style.display='flex';
+}
+function renderActiveWorkoutContent() {
+    if(!activeWorkout)return;
+    document.getElementById('activeWorkoutContent').innerHTML=activeWorkout.exercises.map((ex,ei)=>`<div style="margin-bottom:20px">
+        <div style="font-weight:600;margin-bottom:8px">${ex.name} <span style="color:var(--text-secondary);font-weight:normal;font-size:13px">× ${ex.targetReps} повторений</span></div>
+        ${ex.sets.map((s,si)=>`<div class="workout-set ${s.completed?'completed':''}">
+            <input type="checkbox" class="set-checkbox" ${s.completed?'checked':''} onchange="toggleSet(${ei},${si})">
+            <span class="set-num">#${si+1}</span>
+            <input type="number" class="set-input" placeholder="Вес" value="${s.weight||''}" onchange="updateSet(${ei},${si},'weight',this.value)">
+            <span style="color:var(--text-secondary)">кг</span>
+            <input type="number" class="set-input" placeholder="Повт." value="${s.reps||''}" onchange="updateSet(${ei},${si},'reps',this.value)">
+            <span style="color:var(--text-secondary)">повт.</span>
+        </div>`).join('')}
+    </div>`).join('');
+}
+function toggleSet(ei,si){activeWorkout.exercises[ei].sets[si].completed=!activeWorkout.exercises[ei].sets[si].completed;renderActiveWorkoutContent();}
+function updateSet(ei,si,f,v){activeWorkout.exercises[ei].sets[si][f]=parseFloat(v)||0;}
+function closeWorkoutModal(){document.getElementById('workoutModal').style.display='none';activeWorkout=null;}
+function finishWorkout(){
+    if(!confirm('Завершить тренировку?'))return;
+    workoutLogs.unshift({id:Date.now(),templateId:activeWorkout.templateId,templateName:activeWorkout.templateName,date:new Date().toLocaleString('ru-RU'),exercises:activeWorkout.exercises});
+    addHistory('sport',`Тренировка завершена: ${activeWorkout.templateName}`); closeWorkoutModal(); saveAndRender();
+}
+function deleteTemplate(id){if(!confirm('Удалить шаблон?'))return;workoutTemplates=workoutTemplates.filter(x=>x.id!==id);saveAndRender();}
+function deleteLog(id){if(!confirm('Удалить запись?'))return;workoutLogs=workoutLogs.filter(x=>x.id!==id);saveAndRender();}
+function repeatLog(id){
+    const l=workoutLogs.find(x=>x.id===id);
+    activeWorkout={templateId:l.templateId||l.id,templateName:l.templateName,startedAt:new Date().toLocaleString('ru-RU'),
+        exercises:l.exercises.map(ex=>({name:ex.name,targetReps:ex.sets[0]?.reps||10,sets:ex.sets.map(s=>({weight:s.weight,reps:s.reps,completed:false}))}))};
+    document.getElementById('workoutTitle').textContent=`🏋️ ${l.templateName}`; renderActiveWorkoutContent(); document.getElementById('workoutModal').style.display='flex';
+}
+
+// === Профиль ===
+function getSportRecords(){const r={};workoutLogs.forEach(l=>l.exercises.forEach(ex=>{if(!r[ex.name])r[ex.name]={name:ex.name,maxWeight:0};ex.sets.forEach(s=>{if(s.weight>r[ex.name].maxWeight)r[ex.name].maxWeight=s.weight;});}));return Object.values(r);}
+function addWeightRecord(){const w=parseFloat(document.getElementById('bodyWeight').value);if(!w||w<30||w>300)return alert('Введите корректный вес');weightHistory.unshift({id:Date.now(),weight:w,date:new Date().toLocaleString('ru-RU')});addHistory('weight',`Вес: ${w} кг`);document.getElementById('bodyWeight').value='';saveAndRender();}
+function deleteWeight(id){weightHistory=weightHistory.filter(x=>x.id!==id);saveAndRender();}
+
+// === Рендер ===
+function renderAll(){renderSidebar();renderPage();}
+function renderPage(){
+    const c=document.getElementById('pagesContainer');
+    if(currentSection.startsWith('custom-')){
+        const tid=parseInt(currentSection.replace('custom-',''));
+        const tab=customTabs.find(t=>t.id===tid);
+        if(!tab){c.innerHTML='<p>Вкладка не найдена</p>';return;}
+        editingProgressTabId=tid;
+        c.innerHTML=`<h2 style="margin-bottom:16px">📝 ${tab.name}</h2>
+        <div style="margin-bottom:28px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 class="section-title">🎯 Шкалы прогресса</h3><button class="btn-small btn-primary" onclick="openAddProgressModal(${tid})">+ Добавить</button></div>
+        ${tab.progresses.length?tab.progresses.map(p=>renderProgressBar(p)).join(''):'<p style="color:var(--text-secondary)">Нет шкал</p>'}</div>
+        <div style="background:var(--bg-secondary);padding:20px;border-radius:12px;margin-bottom:24px">
+            <h3 class="section-title">Новая запись</h3>
+            <textarea id="customText-${tid}" placeholder="Текст…" style="width:100%;min-height:70px;margin:10px 0"></textarea>
+            <div class="input-row"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="customReminder-${tid}"> ⏰ Напоминание</label><input type="file" id="customPhoto-${tid}" accept="image/*"></div>
+            <button class="btn-primary" style="margin-top:10px" onclick="addCustomEntry(${tid})">Сохранить</button>
+        </div>
+        <h3 class="section-title">Записи</h3>
+        ${tab.entries.length?tab.entries.map(e=>`<div class="card card-custom ${e.completed?'completed':''}">
+            <div class="card-header"><span class="card-title">${e.isReminder?'⏰ ':''}${e.text}</span><span class="card-meta">${e.createdAt}</span></div>
+            ${e.photo?`<img src="${e.photo}" class="card-photo" onclick="window.open('${e.photo}')">`:''}
+            <div class="card-actions">
+                <button class="btn-small ${e.completed?'btn-primary':'btn-green'}" onclick="toggleCustomEntry(${tid},${e.id})">${e.completed?'↩️':'✓ Выполнено'}</button>
+                <button class="btn-small btn-delete" onclick="deleteCustomEntry(${tid},${e.id})">Удалить</button>
+            </div>
+        </div>`).join(''):'<p style="color:var(--text-secondary)">Пусто</p>'}`;return;
+    }
+    switch(currentSection){
+        case 'food':
+            const tkey=getTodayKey(), total=getTodayCalories();
+            c.innerHTML=`<h2 style="margin-bottom:16px">🍽️ Питание</h2>
+            <div class="calories-container"><div><p style="font-size:14px;color:var(--text-secondary)">Калории за сегодня (${tkey})</p><p class="calories-value">${total} ккал</p></div><div style="font-size:13px;color:var(--text-secondary)">Записей: ${foodRecords.filter(r=>r.dayKey===tkey).length}</div></div>
+            <div style="background:var(--bg-secondary);padding:20px;border-radius:12px;margin-bottom:24px">
+                <h3 class="section-title">Добавить блюдо</h3>
+                <input type="text" id="foodDish" placeholder="Название — начни писать для поиска…" style="width:100%;margin:10px 0" oninput="searchProduct()">
+                <div id="searchResults"></div>
+                <div class="input-row">
+                    <input type="number" id="foodCaloriesPer100" placeholder="Ккал/100г" style="max-width:140px" oninput="calculateCaloriesFromWeight()">
+                    <input type="number" id="foodWeight" placeholder="Вес, г" style="max-width:140px" oninput="calculateCaloriesFromWeight()">
+                    <input type="number" id="foodCalories" placeholder="Итого ккал" style="max-width:140px;border:2px solid var(--accent-orange);font-weight:bold">
+                </div>
+                <div class="input-row" style="margin-top:8px"><input type="file" id="foodPhoto" accept="image/*"><button class="btn-orange" onclick="addFoodRecord()">Добавить</button></div>
+                <p style="font-size:12px;color:var(--text-secondary);margin-top:10px">Введи название → выбери из списка → укажи вес → калории посчитаются автоматически</p>
+            </div>
+            <h3 class="section-title">История</h3>
+            ${foodRecords.length?foodRecords.map(r=>`<div class="card card-food">
+                <div class="card-header"><span class="card-title">${r.dish}<span class="calories-badge">${r.calories} ккал</span></span><span class="card-meta">${r.date}</span></div>
+                ${r.weight?`<p style="font-size:13px;color:var(--text-secondary)">Вес: ${r.weight} г${r.kcalPer100?` · ${r.kcalPer100} ккал/100г`:''}</p>`:''}
+                ${r.photo?`<img src="${r.photo}" class="card-photo" onclick="window.open('${r.photo}')">`:''}
+                <div class="card-actions"><button class="btn-small btn-delete" onclick="deleteFoodRecord(${r.id})">Удалить</button></div>
+            </div>`).join(''):'<p style="color:var(--text-secondary)">Нет записей</p>'}`;
+            break;
+        case 'sport':
+            c.innerHTML=`<h2 style="margin-bottom:16px">💪 Тренировки</h2>
+            <div class="tabs-sport">
+                <button class="sport-tab ${sportSubtab==='templates'?'active':''}" onclick="openSportSubtab('templates')">📋 Шаблоны</button>
+                <button class="sport-tab ${sportSubtab==='history'?'active':''}" onclick="openSportSubtab('history')">📜 История</button>
+            </div>
+            ${sportSubtab==='templates'?`<button class="btn-green" style="margin-bottom:20px" onclick="openTemplateModal()">+ Создать шаблон</button>
+            ${workoutTemplates.length?workoutTemplates.map(t=>`<div class="card card-sport">
+                <div class="card-header"><span class="card-title">${t.name}</span><span class="card-meta">${t.createdAt}</span></div>
+                <p style="font-size:13px;color:var(--text-secondary);margin:8px 0">${t.exercises.map(e=>e.name).join(', ')}</p>
+                <div class="card-actions"><button class="btn-small btn-green" onclick="startWorkout(${t.id})">🏋️ Начать</button><button class="btn-small btn-delete" onclick="deleteTemplate(${t.id})">Удалить</button></div>
+            </div>`).join(''):'<p style="color:var(--text-secondary);text-align:center;padding:30px;">Создай шаблон — и потом только обновляй весы!</p>'}`:`${workoutLogs.length?workoutLogs.map(l=>`<div class="card card-sport">
+                <div class="card-header"><span class="card-title">${l.templateName}</span><span class="card-meta">${l.date}</span></div>
+                <div style="font-size:13px;margin:6px 0">${l.exercises.map(e=>`<div style="padding:4px 0;border-bottom:1px solid var(--border)"><strong>${e.name}:</strong> ${e.sets.map(s=>`${s.weight}кг×${s.reps}`).join(', ')}</div>`).join('')}</div>
+                <div class="card-actions"><button class="btn-small btn-green" onclick="repeatLog(${l.id})">🔄 Повторить</button><button class="btn-small btn-delete" onclick="deleteLog(${l.id})">Удалить</button></div>
+            </div>`).join(''):'<p style="color:var(--text-secondary);text-align:center;padding:30px;">Нет завершенных тренировок</p>'}`}`;
+            break;
+        case 'profile':
+            const recs=getSportRecords(), lastW=weightHistory[0], prevW=weightHistory[1], wDiff=lastW&&prevW?(lastW.weight-prevW.weight).toFixed(1):null;
+            c.innerHTML=`<h2 style="margin-bottom:24px">👤 Профиль</h2>
+            <h3 class="section-title">💪 Рекорды по весу</h3>
+            ${recs.length?recs.map(r=>`<div class="card card-sport"><div class="card-header"><strong>${r.name}</strong><span style="font-size:18px;color:var(--accent-green);font-weight:bold">${r.maxWeight} кг</span></div></div>`).join(''):'<p style="color:var(--text-secondary)">Нет данных — заверши хотя бы одну тренировку</p>'}
+            <h3 class="section-title" style="margin-top:28px">⚖️ Вес тела</h3>
+            <div class="input-row"><input type="number" id="bodyWeight" step="0.1" placeholder="Вес, кг" style="max-width:160px"><button class="btn-rose" onclick="addWeightRecord()">Записать</button></div>
+            ${lastW?`<p style="margin-top:10px">Текущий: <strong>${lastW.weight} кг</strong>${wDiff?` <span class="${wDiff>0?'diff-up':'diff-down'}">${wDiff>0?'↑':'↓'} ${Math.abs(wDiff)} кг</span>`:''}</p>`:''}
+            ${weightHistory.length?`<div style="margin-top:10px;max-height:150px;overflow-y:auto">${weightHistory.map(w=>`<p style="font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)">${w.date} — ${w.weight} кг <button class="btn-small btn-delete" style="margin-left:8px" onclick="deleteWeight(${w.id})">×</button></p>`).join('')}</div>`:''}
+            <h3 class="section-title" style="margin-top:28px">📜 История действий</h3>
+            <div style="max-height:300px;overflow-y:auto">${history.length?history.map(h=>`<p style="font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)">${h.time}: ${h.text}</p>`).join(''):'<p style="color:var(--text-secondary)">Пусто</p>'}</div>`;
+            break;
+    }
+}
+</script>
+</body>
+</html>
